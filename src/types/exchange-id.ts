@@ -1,1 +1,1 @@
-export type TExchangeId = 'binance';
+export type TExchangeId = 'binance' | 'uniswap-v2' | 'pancake-swap';

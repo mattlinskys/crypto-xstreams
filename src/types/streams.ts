@@ -14,11 +14,10 @@ export interface ICoinAsset extends IBaseAsset {
 
 export interface ITokenAsset extends IBaseAsset {
   type: 'token';
-  contractAddress: string;
-  chainId: number;
+  address: string;
 }
 
-export type TAsset = IBaseAsset;
+export type TAsset = ICoinAsset | ITokenAsset;
 
 export interface IStreamPair {
   symbol: string;
@@ -33,13 +32,13 @@ export interface IStreamMsg<RawMsg> {
   raw: RawMsg;
 }
 
-export interface IStream<Msg> {
+export interface IStream<Msg, Raw> {
   observe(): Observable<Msg>;
-  observeRaw(): Observable<any>;
+  observeRaw(): Observable<Raw>;
 }
 
 export interface IStreamStatic<C = {}, R = {}> {
   id: TExchangeId;
 
-  new (pairs: IStreamPair[], config: C): IStream<IStreamMsg<R>>;
+  new (pairs: IStreamPair[], config: C): IStream<IStreamMsg<R>, R>;
 }

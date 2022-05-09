@@ -1,10 +1,10 @@
 import WebSocket from 'ws';
 import { map, Observable } from 'rxjs';
 import { StaticImplements } from 'types/utils';
-import { IStreamPair, IStreamStatic } from 'types/stream';
+import { IStreamPair, IStreamStatic } from 'types/streams';
 import { TExchangeId } from 'types/exchange-id';
 
-interface IStreamRawMsg {
+export interface IBinanceStreamRawMsg {
   stream: string;
   data: {
     e: 'kline'; // Event type
@@ -31,7 +31,7 @@ interface IStreamRawMsg {
   };
 }
 
-interface BinanceConfig {
+export interface IBinanceStreamConfig {
   wssUrl: string;
   klineInterval?:
     | '1m'
@@ -51,7 +51,7 @@ interface BinanceConfig {
     | '1M';
 }
 
-@StaticImplements<IStreamStatic<BinanceConfig, IStreamRawMsg>>()
+@StaticImplements<IStreamStatic<IBinanceStreamConfig, IBinanceStreamRawMsg>>()
 class BinanceStream {
   public static id: TExchangeId = 'binance';
 
@@ -62,7 +62,10 @@ class BinanceStream {
       .join('/')}`;
   }
 
-  constructor(private pairs: IStreamPair[], private config: BinanceConfig) {}
+  constructor(
+    private pairs: IStreamPair[],
+    private config: IBinanceStreamConfig
+  ) {}
 
   observe() {
     return this.observeRaw().pipe(
@@ -83,7 +86,7 @@ class BinanceStream {
   }
 
   observeRaw() {
-    return new Observable<IStreamRawMsg>(subscriber => {
+    return new Observable<IBinanceStreamRawMsg>(subscriber => {
       let ws: WebSocket;
 
       const connect = () => {
@@ -97,7 +100,7 @@ class BinanceStream {
           if (msg === 'ping') {
             ws.send('pong');
           } else {
-            const payload = JSON.parse(msg) as IStreamRawMsg;
+            const payload = JSON.parse(msg) as IBinanceStreamRawMsg;
             subscriber.next(payload);
           }
         });
