@@ -2,15 +2,23 @@ import { BigNumber, Contract, providers, utils } from 'ethers';
 import { map, Observable } from 'rxjs';
 import { StaticImplements } from 'types/utils';
 import { multicallInterface, uniswapV2PairInterface } from 'constants/abis';
-import { IStreamPair, IStreamStatic, ITokenAsset } from 'types/streams';
+import {
+  IStreamMsg,
+  IStreamPair,
+  IStreamRawMsg,
+  IStreamStatic,
+  ITokenAsset,
+} from 'types/streams';
 import { TExchangeId } from 'types/exchange-id';
 import { getCreate2Address } from 'ethers/lib/utils';
+import Decimal from 'decimal.js-light';
 import invariant from 'tiny-invariant';
 
-export interface IUniswapV2StreamRawMsg {
+export interface IUniswapV2StreamRawData {
   blockNumber: number;
   reserve0: BigNumber;
   reserve1: BigNumber;
+  pairAddress: string;
 }
 
 export interface IUniswapV2StreamConfig {
@@ -21,7 +29,7 @@ export interface IUniswapV2StreamConfig {
 }
 
 @StaticImplements<
-  IStreamStatic<IUniswapV2StreamConfig, IUniswapV2StreamRawMsg>
+  IStreamStatic<IUniswapV2StreamConfig, IUniswapV2StreamRawData>
 >()
 class UniswapV2Stream {
   public static id: TExchangeId = 'uniswap-v2';
@@ -109,69 +117,88 @@ class UniswapV2Stream {
   }
 
   observe() {
-    return this.observeRaw().pipe(
-      // TODO:
-      map(raw => ({
-        symbol: '',
-        averagePrice: 1,
-        eventTime: new Date(),
-        raw,
-      }))
+    return this.observeRaw().pipe<IStreamMsg<IUniswapV2StreamRawData>[]>(
+      map(rawMsgs =>
+        rawMsgs.map(({ pair, data: raw }) => {
+          const { base, quote } = pair;
+          const { reserve0, reserve1 } = raw;
+          const [denominator, numerator] =
+            (base as ITokenAsset).address.toLowerCase() <
+            (quote as ITokenAsset).address.toLowerCase()
+              ? [reserve0, reserve1]
+              : [reserve1, reserve0];
+          let price = new Decimal(numerator.toString()).div(
+            denominator.toString()
+          );
+          if (base.decimals !== quote.decimals) {
+            price = price[base.decimals < quote.decimals ? 'div' : 'mul'](
+              utils
+                .parseUnits('1', Math.abs(base.decimals - quote.decimals))
+                .toString()
+            );
+          }
+
+          return {
+            pair,
+            raw,
+            data: {
+              averagePrice: Number(price.toString()),
+              eventTime: new Date(),
+            },
+          };
+        })
+      )
     );
   }
 
   observeRaw() {
-    return new Observable<IUniswapV2StreamRawMsg>(subscriber => {
-      const provider = new providers.JsonRpcProvider(
-        this.config.jsonRpcProviderUrl
-      );
-      let unsubscribed = false;
-
-      const handleBlock = async (blockNumber: number) => {
-        const multicallContract = new Contract(
-          this.multicallAddress,
-          multicallInterface,
-          provider
+    return new Observable<IStreamRawMsg<IUniswapV2StreamRawData>[]>(
+      subscriber => {
+        const provider = new providers.JsonRpcProvider(
+          this.config.jsonRpcProviderUrl
         );
-        const reserves = await UniswapV2Stream.getReserves(
-          multicallContract,
-          this.pairs.map(({ base, quote }) =>
+        let unsubscribed = false;
+
+        const handleBlock = async (blockNumber: number) => {
+          const multicallContract = new Contract(
+            this.multicallAddress,
+            multicallInterface,
+            provider
+          );
+          const pairAddresses = this.pairs.map(({ base, quote }) =>
             this.getPairAddress(base as ITokenAsset, quote as ITokenAsset)
-          )
-        );
+          );
+          const reserves = await UniswapV2Stream.getReserves(
+            multicallContract,
+            pairAddresses
+          );
 
-        for (let i = 0; i < reserves.length; i++) {
-          const { base, quote } = this.pairs[i];
-          // TODO: Sorts before
-          const { reserve0, reserve1 } = reserves[i];
-          // const fraction = 10 ** 9;
-          // const price =
-          //   reserve0
-          //     .mul(fraction)
-          //     .div(reserve1)
-          //     .toNumber() / fraction;
+          subscriber.next(
+            reserves.map(({ reserve0, reserve1 }, i) => ({
+              pair: this.pairs[i],
+              data: {
+                blockNumber,
+                reserve0,
+                reserve1,
+                pairAddress: pairAddresses[i],
+              },
+            }))
+          );
 
-          console.log(base, quote, reserve0.toString(), reserve1.toString());
-          subscriber.next({
-            reserve0,
-            reserve1,
-            blockNumber,
-          });
-        }
+          if (!unsubscribed) {
+            provider.once('block', handleBlock);
+          }
+        };
 
-        if (!unsubscribed) {
-          provider.once('block', handleBlock);
-        }
-      };
+        provider.on('error', subscriber.error);
+        provider.once('block', handleBlock);
 
-      provider.on('error', subscriber.error);
-      provider.once('block', handleBlock);
-
-      return () => {
-        unsubscribed = true;
-        provider.removeAllListeners();
-      };
-    });
+        return () => {
+          unsubscribed = true;
+          provider.removeAllListeners();
+        };
+      }
+    );
   }
 }
 

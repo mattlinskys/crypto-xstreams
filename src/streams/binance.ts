@@ -1,10 +1,15 @@
 import WebSocket from 'ws';
 import { map, Observable } from 'rxjs';
 import { StaticImplements } from 'types/utils';
-import { IStreamPair, IStreamStatic } from 'types/streams';
+import {
+  IStreamMsg,
+  IStreamPair,
+  IStreamRawMsg,
+  IStreamStatic,
+} from 'types/streams';
 import { TExchangeId } from 'types/exchange-id';
 
-export interface IBinanceStreamRawMsg {
+export interface IBinanceStreamRawData {
   stream: string;
   data: {
     e: 'kline'; // Event type
@@ -51,7 +56,7 @@ export interface IBinanceStreamConfig {
     | '1M';
 }
 
-@StaticImplements<IStreamStatic<IBinanceStreamConfig, IBinanceStreamRawMsg>>()
+@StaticImplements<IStreamStatic<IBinanceStreamConfig, IBinanceStreamRawData>>()
 class BinanceStream {
   public static id: TExchangeId = 'binance';
 
@@ -68,51 +73,68 @@ class BinanceStream {
   ) {}
 
   observe() {
-    return this.observeRaw().pipe(
-      map(raw => {
-        const {
-          k: { s: symbol, h: highPrice, l: lowPrice },
-          E: eventTime,
-        } = raw.data;
+    return this.observeRaw().pipe<IStreamMsg<IBinanceStreamRawData>[]>(
+      map(rawMsgs =>
+        rawMsgs.map(({ pair, data: raw }) => {
+          const {
+            k: { h: highPrice, l: lowPrice },
+            E: eventTime,
+          } = raw.data;
 
-        return {
-          symbol,
-          averagePrice: (+highPrice + +lowPrice) / 2,
-          eventTime: new Date(eventTime),
-          raw,
-        };
-      })
+          return {
+            pair,
+            raw,
+            data: {
+              averagePrice: (+highPrice + +lowPrice) / 2,
+              eventTime: new Date(eventTime),
+            },
+          };
+        })
+      )
     );
   }
 
   observeRaw() {
-    return new Observable<IBinanceStreamRawMsg>(subscriber => {
-      let ws: WebSocket;
+    return new Observable<IStreamRawMsg<IBinanceStreamRawData>[]>(
+      subscriber => {
+        let ws: WebSocket;
 
-      const connect = () => {
-        ws = new WebSocket(this.wssUrl);
+        const connect = () => {
+          ws = new WebSocket(this.wssUrl);
 
-        ws.on('error', err => subscriber.error(err));
-        ws.on('close', connect);
+          ws.on('error', err => subscriber.error(err));
+          ws.on('close', connect);
 
-        ws.on('message', data => {
-          const msg = data.toString();
-          if (msg === 'ping') {
-            ws.send('pong');
-          } else {
-            const payload = JSON.parse(msg) as IBinanceStreamRawMsg;
-            subscriber.next(payload);
-          }
-        });
-      };
+          ws.on('message', data => {
+            const msg = data.toString();
+            if (msg === 'ping') {
+              ws.send('pong');
+            } else {
+              const data = JSON.parse(msg) as IBinanceStreamRawData;
+              const pair = this.pairs.find(
+                ({ symbol }) => symbol === data.data.s
+              );
 
-      connect();
+              if (pair) {
+                subscriber.next([
+                  {
+                    pair,
+                    data,
+                  },
+                ]);
+              }
+            }
+          });
+        };
 
-      return () => {
-        ws.removeAllListeners();
-        ws.close();
-      };
-    });
+        connect();
+
+        return () => {
+          ws.removeAllListeners();
+          ws.close();
+        };
+      }
+    );
   }
 }
 

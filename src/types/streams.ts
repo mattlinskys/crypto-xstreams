@@ -2,10 +2,13 @@ import { Observable } from 'rxjs';
 import { TExchangeId } from './exchange-id';
 
 export interface IBaseAsset {
-  type: 'coin' | 'token';
   symbol: string;
   name: string;
   decimals: number;
+}
+
+export interface IFlatAsset extends IBaseAsset {
+  type: 'flat';
 }
 
 export interface ICoinAsset extends IBaseAsset {
@@ -17,7 +20,7 @@ export interface ITokenAsset extends IBaseAsset {
   address: string;
 }
 
-export type TAsset = ICoinAsset | ITokenAsset;
+export type TAsset = IFlatAsset | ICoinAsset | ITokenAsset;
 
 export interface IStreamPair {
   symbol: string;
@@ -25,20 +28,27 @@ export interface IStreamPair {
   quote: TAsset;
 }
 
-export interface IStreamMsg<RawMsg> {
-  eventTime: Date;
-  symbol: string;
-  averagePrice: number;
-  raw: RawMsg;
+export interface IStreamRawMsg<IRawData> {
+  pair: IStreamPair;
+  data: IRawData;
 }
 
-export interface IStream<Msg, Raw> {
-  observe(): Observable<Msg>;
-  observeRaw(): Observable<Raw>;
+export interface IStreamMsg<IRawData> {
+  pair: IStreamPair;
+  data: {
+    eventTime: Date;
+    averagePrice: number;
+  };
+  raw: IRawData;
+}
+
+export interface IStream<IRawData> {
+  observe(): Observable<IStreamMsg<IRawData>[]>;
+  observeRaw(): Observable<IStreamRawMsg<IRawData>[]>;
 }
 
 export interface IStreamStatic<C = {}, R = {}> {
   id: TExchangeId;
 
-  new (pairs: IStreamPair[], config: C): IStream<IStreamMsg<R>, R>;
+  new (pairs: IStreamPair[], config: C): IStream<R>;
 }
