@@ -1,14 +1,14 @@
-import BinanceStream from '../src/streams/binance';
-import { BTC, USDT } from './__data__/assets';
+import BinanceStream from '../../src/streams/binance';
+import { BTC, USDT } from '../__data__/assets';
 
 describe('BinanceStream', () => {
-  it('should throw connection error', done => {
+  it('should throw connection error', (done) => {
     const binanceStream = new BinanceStream([], {
       wssUrl: 'wss://randomurl.random',
     });
 
     const subscriber = binanceStream.observe().subscribe({
-      error: err => {
+      error: (err) => {
         subscriber.unsubscribe();
         expect(err.code).toBe('ENOTFOUND');
         done();
@@ -16,7 +16,7 @@ describe('BinanceStream', () => {
     });
   });
 
-  it('receives stream message from binance', done => {
+  it('receives stream message from binance', (done) => {
     const binanceStream = new BinanceStream(
       [
         {
@@ -32,11 +32,10 @@ describe('BinanceStream', () => {
 
     const subscriber = binanceStream.observe().subscribe({
       next() {
-        // TODO:
         subscriber.unsubscribe();
         done();
       },
-      error: err => {
+      error: (err) => {
         throw err;
       },
     });

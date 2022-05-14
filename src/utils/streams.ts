@@ -1,12 +1,11 @@
-import { BinanceStream } from 'streams';
-import PancakeSwapStream from 'streams/pancake-swap';
-import UniswapV2Stream from 'streams/uniswap-v2';
+import { BinanceStream, HuobiStream, UniswapV2Stream, PancakeSwapStream } from 'streams';
 import invariant from 'tiny-invariant';
 import { TExchangeId } from 'types/exchange-id';
 import { IStreamStatic } from 'types/streams';
 
 const xstreams: Record<TExchangeId, IStreamStatic<any, any>> = {
   ['binance']: BinanceStream,
+  ['huobi']: HuobiStream,
   ['uniswap-v2']: UniswapV2Stream,
   ['pancake-swap']: PancakeSwapStream,
 };

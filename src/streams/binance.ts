@@ -105,21 +105,21 @@ class BinanceStream {
           ws.on('error', err => subscriber.error(err));
           ws.on('close', connect);
 
-          ws.on('message', data => {
-            const msg = data.toString();
-            if (msg === 'ping') {
+          ws.on('message', rawData => {
+            const data = rawData.toString();
+            if (data === 'ping') {
               ws.send('pong');
             } else {
-              const data = JSON.parse(msg) as IBinanceStreamRawData;
+              const msg = JSON.parse(data) as IBinanceStreamRawData;
               const pair = this.pairs.find(
-                ({ symbol }) => symbol === data.data.s
+                ({ symbol }) => symbol === msg.data.s
               );
 
               if (pair) {
                 subscriber.next([
                   {
                     pair,
-                    data,
+                    data: msg,
                   },
                 ]);
               }
