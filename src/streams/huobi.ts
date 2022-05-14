@@ -101,8 +101,6 @@ class HuobiStream {
         ws.on('message', async (rawData) => {
           const msg = JSON.parse((await gunzip(rawData as Buffer)).toString());
 
-          console.log(msg);
-
           if ((msg as IHuobiPingMsg).ping) {
             ws.send(JSON.stringify({ pong: (msg as IHuobiPingMsg).ping }));
           } else if ((msg as IHuobiErrorMsg).status === 'error') {

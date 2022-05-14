@@ -31,7 +31,7 @@ describe('HuobiStream', () => {
     );
 
     const subscriber = huobiStream.observe().subscribe({
-      next(dd) {
+      next() {
         // TODO:
         subscriber.unsubscribe();
         done();
