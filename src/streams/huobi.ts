@@ -1,8 +1,8 @@
 import WebSocket from 'ws';
 import { map, Observable } from 'rxjs';
-import { StaticImplements } from 'types/utils';
-import { IStreamMsg, IStreamPair, IStreamRawMsg, IStreamStatic } from 'types/streams';
-import { TExchangeId } from 'types/exchange-id';
+import { StaticImplements } from '../types/utils';
+import { IStreamMsg, IStreamPair, IStreamRawMsg, IStreamStatic } from '../types/streams';
+import { TExchangeId } from '../types/exchange-id';
 import util from 'util';
 import zlib from 'zlib';
 

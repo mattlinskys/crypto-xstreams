@@ -1,7 +1,7 @@
-import { StaticImplements } from 'types/utils';
-import { IStreamPair, IStreamStatic } from 'types/streams';
-import { TExchangeId } from 'types/exchange-id';
-import UniswapV2Stream, { IUniswapV2StreamConfig, IUniswapV2StreamRawData } from 'streams/uniswap-v2';
+import { StaticImplements } from '../types/utils';
+import { IStreamPair, IStreamStatic } from '../types/streams';
+import { TExchangeId } from '../types/exchange-id';
+import UniswapV2Stream, { IUniswapV2StreamConfig, IUniswapV2StreamRawData } from './uniswap-v2';
 
 interface PancakeSwapConfig extends IUniswapV2StreamConfig {}
 

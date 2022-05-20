@@ -1,13 +1,8 @@
 import WebSocket from 'ws';
 import { map, Observable } from 'rxjs';
-import { StaticImplements } from 'types/utils';
-import {
-  IStreamMsg,
-  IStreamPair,
-  IStreamRawMsg,
-  IStreamStatic,
-} from 'types/streams';
-import { TExchangeId } from 'types/exchange-id';
+import { StaticImplements } from '../types/utils';
+import { IStreamMsg, IStreamPair, IStreamRawMsg, IStreamStatic } from '../types/streams';
+import { TExchangeId } from '../types/exchange-id';
 
 export interface IBinanceStreamRawData {
   stream: string;
@@ -63,18 +58,15 @@ class BinanceStream {
   private get wssUrl() {
     return `${this.config.wssUrl}/stream?streams=${this.pairs
       .map(({ base, quote }) => `${base.symbol}${quote.symbol}`.toLowerCase())
-      .map(stream => `${stream}@kline_${this.config.klineInterval || '1m'}`)
+      .map((stream) => `${stream}@kline_${this.config.klineInterval || '1m'}`)
       .join('/')}`;
   }
 
-  constructor(
-    private pairs: IStreamPair[],
-    private config: IBinanceStreamConfig
-  ) {}
+  constructor(private pairs: IStreamPair[], private config: IBinanceStreamConfig) {}
 
   observe() {
     return this.observeRaw().pipe<IStreamMsg<IBinanceStreamRawData>[]>(
-      map(rawMsgs =>
+      map((rawMsgs) =>
         rawMsgs.map(({ pair, data: raw }) => {
           const {
             k: { h: highPrice, l: lowPrice },
@@ -95,46 +87,42 @@ class BinanceStream {
   }
 
   observeRaw() {
-    return new Observable<IStreamRawMsg<IBinanceStreamRawData>[]>(
-      subscriber => {
-        let ws: WebSocket;
+    return new Observable<IStreamRawMsg<IBinanceStreamRawData>[]>((subscriber) => {
+      let ws: WebSocket;
 
-        const connect = () => {
-          ws = new WebSocket(this.wssUrl);
+      const connect = () => {
+        ws = new WebSocket(this.wssUrl);
 
-          ws.on('error', err => subscriber.error(err));
-          ws.on('close', connect);
+        ws.on('error', (err) => subscriber.error(err));
+        ws.on('close', connect);
 
-          ws.on('message', rawData => {
-            const data = rawData.toString();
-            if (data === 'ping') {
-              ws.send('pong');
-            } else {
-              const msg = JSON.parse(data) as IBinanceStreamRawData;
-              const pair = this.pairs.find(
-                ({ symbol }) => symbol === msg.data.s
-              );
+        ws.on('message', (rawData) => {
+          const data = rawData.toString();
+          if (data === 'ping') {
+            ws.send('pong');
+          } else {
+            const msg = JSON.parse(data) as IBinanceStreamRawData;
+            const pair = this.pairs.find(({ symbol }) => symbol === msg.data.s);
 
-              if (pair) {
-                subscriber.next([
-                  {
-                    pair,
-                    data: msg,
-                  },
-                ]);
-              }
+            if (pair) {
+              subscriber.next([
+                {
+                  pair,
+                  data: msg,
+                },
+              ]);
             }
-          });
-        };
+          }
+        });
+      };
 
-        connect();
+      connect();
 
-        return () => {
-          ws.removeAllListeners();
-          ws.close();
-        };
-      }
-    );
+      return () => {
+        ws.removeAllListeners();
+        ws.close();
+      };
+    });
   }
 }
 

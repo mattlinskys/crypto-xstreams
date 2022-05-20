@@ -1,9 +1,9 @@
 import { BigNumber, Contract, providers, utils } from 'ethers';
 import { map, Observable } from 'rxjs';
-import { StaticImplements } from 'types/utils';
-import { multicallInterface, uniswapV2PairInterface } from 'constants/abis';
-import { IStreamMsg, IStreamPair, IStreamRawMsg, IStreamStatic, ITokenAsset } from 'types/streams';
-import { TExchangeId } from 'types/exchange-id';
+import { StaticImplements } from '../types/utils';
+import { multicallInterface, uniswapV2PairInterface } from '../constants/abis';
+import { IStreamMsg, IStreamPair, IStreamRawMsg, IStreamStatic, ITokenAsset } from '../types/streams';
+import { TExchangeId } from '../types/exchange-id';
 import Decimal from 'decimal.js-light';
 import invariant from 'tiny-invariant';
 
